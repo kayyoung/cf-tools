@@ -1,240 +1,267 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>凯哥CF优选终端 Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --ios-blue: #007AFF; --ios-red: #FF3B30; }
-        body { background: #f5f5f7; font-family: -apple-system, system-ui, sans-serif; color: #1c1c1e; display: flex; flex-direction: column; min-height: 100vh; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.5); }
-        .ios-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 14px; font-weight: 600; }
-        .ios-btn:active { transform: scale(0.95); opacity: 0.9; }
-        .stop-active { background-color: var(--ios-red) !important; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.4) !important; }
-        .content-wrapper { flex: 1; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>凯哥CF优选终端 Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+    .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    .btn { transition: all 0.2s; }
+    .btn:active { transform: scale(0.97); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .dot-green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .dot-red { background: #ef4444; }
+    .dot-wait { background: #64748b; }
+  </style>
 </head>
-<body class="p-4 md:p-10">
-    <div class="content-wrapper max-w-7xl mx-auto w-full space-y-8">
-        
-        <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-                <h1 class="text-4xl font-extrabold tracking-tight text-black">凯哥CF优选终端 Pro</h1>
-                <p class="text-gray-500 mt-2 font-medium">由本地环境发起实测 · 寻找最优 Cloudflare 边缘节点</p>
-            </div>
-            <div id="runtimeStats" class="glass px-6 py-3 flex gap-6 text-sm shadow-sm">
-                <div><span class="text-gray-400 block text-[10px] uppercase font-bold">队列待测</span><span id="statQueue" class="font-mono font-bold text-lg">0</span></div>
-                <div><span class="text-gray-400 block text-[10px] uppercase font-bold">已完成</span><span id="statDone" class="font-mono font-bold text-lg text-blue-600">0</span></div>
-                <div><span class="text-gray-400 block text-[10px] uppercase font-bold">存活节点</span><span id="statAlive" class="font-mono font-bold text-lg text-green-600">0</span></div>
-            </div>
-        </header>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+  <div class="w-full max-w-4xl space-y-6">
+    <header class="text-center space-y-2">
+      <h1 class="text-2xl font-bold tracking-wide">凯哥CF优选终端 Pro</h1>
+      <p class="text-sm text-slate-400">由本地环境发起实测 · 寻找最优 Cloudflare 边缘节点</p>
+    </header>
 
-        <div class="flex flex-col lg:flex-row gap-8">
-            <main class="lg:w-3/4 space-y-6">
-                <div class="glass p-8 shadow-2xl space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">测试目标 (IP/范围/CIDR)</label>
-                                <button onclick="clearInput()" class="text-xs text-blue-500 hover:underline">清空</button>
-                            </div>
-                            <textarea id="ipInput" class="w-full h-56 p-4 bg-white/50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm shadow-inner" placeholder="1.1.1.1&#10;104.16.0.0/24&#10;172.67.1.1-172.67.1.100"></textarea>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="loadPreset('official')" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-bold hover:bg-gray-50">加载官方全量段</button>
-                                <button onclick="loadPreset('hk')" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-bold hover:bg-gray-50">香港/亚太推荐</button>
-                                <button onclick="loadPreset('us')" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-bold hover:bg-gray-50">美西/国际推荐</button>
-                            </div>
-                        </div>
-
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">并发数限制</label>
-                                    <input type="number" id="concurrency" value="6" min="1" max="20" class="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none font-bold text-blue-600 shadow-sm focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">测试端口</label>
-                                    <select id="port" class="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none font-bold text-gray-700 shadow-sm">
-                                        <optgroup label="HTTPS (推荐)">
-                                            <option value="443" selected>443 (默认)</option>
-                                            <option value="2053">2053</option>
-                                            <option value="2083">2083</option>
-                                            <option value="2087">2087</option>
-                                            <option value="2096">2096</option>
-                                            <option value="8443">8443</option>
-                                        </optgroup>
-                                        <optgroup label="HTTP (兼容性高)">
-                                            <option value="80">80</option>
-                                            <option value="8080">8080</option>
-                                            <option value="8880">8880</option>
-                                            <option value="2052">2052</option>
-                                            <option value="2082">2082</option>
-                                            <option value="2086">2086</option>
-                                            <option value="2095">2095</option>
-                                        </optgroup>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="p-5 bg-blue-50/50 rounded-2xl flex items-center gap-3">
-                                <input type="checkbox" id="skipSpeed" class="w-5 h-5 rounded-lg text-blue-600 focus:ring-blue-500 border-gray-300">
-                                <label for="skipSpeed" class="text-sm font-semibold text-blue-900">仅测试延迟 (Ping Mode)</label>
-                            </div>
-                            <button id="mainBtn" onclick="toggleTask()" class="w-full py-5 bg-blue-600 text-white ios-btn shadow-xl shadow-blue-200 text-xl">开始测试任务</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="glass overflow-hidden shadow-sm">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-50/80 border-b border-gray-100">
-                                <tr>
-                                    <th class="px-8 py-5 font-bold text-gray-400 uppercase tracking-widest text-[10px]">节点目标</th>
-                                    <th class="px-8 py-5 font-bold text-gray-400 uppercase tracking-widest text-[10px]">实时状态</th>
-                                    <th class="px-8 py-5 font-bold text-gray-400 uppercase tracking-widest text-[10px] text-center">延迟 (PING)</th>
-                                    <th class="px-8 py-5 font-bold text-gray-400 uppercase tracking-widest text-[10px] text-right">模拟带宽</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resList" class="divide-y divide-gray-100 bg-white/30"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </main>
-
-            <aside class="lg:w-1/4 space-y-6">
-                <div class="glass p-6 shadow-sm border-l-4 border-l-blue-500">
-                    <h3 class="font-bold text-lg mb-4 text-black">操作说明</h3>
-                    <div class="text-xs text-gray-600 space-y-4 leading-relaxed">
-                        <p><b class="text-black">1. 关键：解决拦截</b><br>浏览器禁止在 HTTPS 页面测原生 IP 延迟。请将本站部署后，通过 <span class="text-blue-600 font-mono">http://</span> 协议访问以解锁全功能。</p>
-                        <p><b class="text-black">2. 模拟测速逻辑</b><br>系统请求 5MB 数据包。因跨域限制无法获取实时进度，显示的是数据传输完毕后的均值带宽。</p>
-                        <p><b class="text-black">3. 并发设置建议</b><br>手机环境建议并发设为 4-6；高性能 PC 建议并发设为 10-15。过高可能导致结果产生巨大偏差。</p>
-                    </div>
-                </div>
-                <div class="glass p-6 text-[11px] text-gray-400">
-                    <p class="font-bold mb-2 uppercase tracking-widest">系统监视器</p>
-                    <ul class="space-y-1 font-mono">
-                        <li>CONCURRENCY: <span id="activeReq">0</span>/<span id="maxReq">6</span></li>
-                        <li>ABORT_CONTROLLER: <span class="text-green-500">READY</span></li>
-                        <li>PROTOCOL: <span id="curProto">WAIT</span></li>
-                    </ul>
-                </div>
-            </aside>
-        </div>
+    <div class="grid grid-cols-3 gap-3 text-center text-sm">
+      <div class="glass rounded-lg p-3"><span class="block text-slate-400">队列待测</span><span id="ui-pending" class="text-xl font-mono">0</span></div>
+      <div class="glass rounded-lg p-3"><span class="block text-slate-400">已完成</span><span id="ui-completed" class="text-xl font-mono">0</span></div>
+      <div class="glass rounded-lg p-3"><span class="block text-slate-400">存活节点</span><span id="ui-alive" class="text-xl font-mono">0</span></div>
     </div>
 
-    <footer class="mt-auto py-10 text-center">
-        <div class="w-20 h-1 bg-gray-200 mx-auto mb-4 rounded-full"></div>
-        <p class="text-gray-500 text-sm font-bold tracking-widest uppercase">凯哥CF优选终端 Pro</p>
-        <p class="text-gray-300 text-[10px] mt-1 tracking-tighter italic">Professional Cloudflare Optimization Solutions · 2026</p>
-    </footer>
+    <div class="glass rounded-xl p-4 space-y-4">
+      <div>
+        <label class="block text-sm text-slate-400 mb-1">测试目标 (IP/范围/CIDR)</label>
+        <input id="input-target" type="text" placeholder="1.1.1.1 或 1.1.1.0/24 或 1.1.1.1-1.1.1.50" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="presetIp('official')" class="btn px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">加载官方全量段</button>
+        <button onclick="presetIp('hk')" class="btn px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">香港/亚太推荐</button>
+        <button onclick="presetIp('us')" class="btn px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">美西/国际推荐</button>
+        <button onclick="clearInput()" class="btn px-3 py-1 bg-red-900/50 text-red-300 rounded text-xs hover:bg-red-900">清空</button>
+      </div>
 
-    <script>
-        let isRunning = false; let queue = []; let activeCount = 0; let abortCtrl = null; let stats = { done: 0, alive: 0 };
-        const PRESETS = {
-            official: ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "172.64.0.0/13", "131.0.72.0/22"],
-            hk: ["103.21.244.0/24", "104.16.0.0/24"],
-            us: ["173.245.48.0/24", "104.20.0.0/24"]
-        };
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">并发数限制</label>
+          <input id="input-concurrency" type="number" min="1" max="50" value="10" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">测试端口</label>
+          <select id="input-port" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm">
+            <option value="443">443 (默认)</option><option value="80">80</option><option value="8080">8080</option>
+            <option value="2052">2052</option><option value="2053">2053</option><option value="2082">2082</option>
+            <option value="2083">2083</option><option value="2086">2086</option><option value="2087">2087</option>
+            <option value="2095">2095</option><option value="2096">2096</option><option value="8443">8443</option><option value="8880">8880</option>
+          </select>
+        </div>
+        <div class="col-span-2 flex items-end">
+          <label class="flex items-center cursor-pointer select-none">
+            <input id="check-ping" type="checkbox" class="w-4 h-4 accent-blue-500 mr-2">
+            <span class="text-sm">仅测试延迟 (Ping Mode)</span>
+          </label>
+        </div>
+      </div>
 
-        function loadPreset(k) { document.getElementById('ipInput').value += (document.getElementById('ipInput').value ? '\n' : '') + PRESETS[k].join('\n'); }
-        function clearInput() { document.getElementById('ipInput').value = ''; }
-        function ip2Long(ip) { return ip.split('.').reduce((l, o) => (l << 8) + parseInt(o), 0) >>> 0; }
-        function long2Ip(l) { return [(l>>>24)&255, (l>>>16)&255, (l>>>8)&255, l&255].join('.'); }
+      <button id="btn-toggle" class="btn w-full py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition">开始测试任务</button>
+    </div>
 
-        function parseTargets(text) {
-            let res = [];
-            text.split('\n').map(l => l.trim()).filter(l => l).forEach(line => {
-                if (line.includes('/')) {
-                    const [ip, bits] = line.split('/');
-                    const mask = ~(Math.pow(2, 32 - parseInt(bits)) - 1);
-                    const start = ip2Long(ip) & mask;
-                    const count = Math.min(Math.pow(2, 32 - parseInt(bits)), 256);
-                    for(let i=0; i<count; i++) res.push(long2Ip(start + i));
-                } else if (line.includes('-')) {
-                    const [s, e] = line.split('-').map(ip2Long);
-                    for(let i=s; i<=Math.min(e, s+255); i++) res.push(long2Ip(i));
-                } else { res.push(line); }
-            });
-            return [...new Set(res)];
-        }
+    <div class="glass rounded-xl overflow-hidden">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-slate-800 text-slate-400">
+          <tr><th class="px-4 py-2">节点目标</th><th class="px-4 py-2">实时状态</th><th class="px-4 py-2">延迟 (PING)</th><th class="px-4 py-2">模拟带宽</th></tr>
+        </thead>
+        <tbody id="table-body" class="divide-y divide-slate-700/50"></tbody>
+      </table>
+    </div>
 
-        async function toggleTask() {
-            const btn = document.getElementById('mainBtn');
-            if (isRunning) {
-                isRunning = false;
-                if (abortCtrl) abortCtrl.abort();
-                btn.innerText = '开始测试任务';
-                btn.classList.remove('stop-active');
-                return;
-            }
+    <div class="text-xs text-slate-500 space-y-1">
+      <p>1. 关键: 已集成 Worker 代理，无需部署 VPS 或切换 HTTP，直接 HTTPS 访问即可解锁全功能。</p>
+      <p>2. 模拟测速逻辑系统请求 5MB 数据包。因跨域限制无法获取实时进度,显示的是数据传输完毕后的均值带宽。</p>
+      <p>3. 并发设置建议手机环境建议并发设为 4-6;高性能 PC 建议并发设为 10-15。过高可能导致结果产生巨大偏差。</p>
+    </div>
 
-            queue = parseTargets(document.getElementById('ipInput').value);
-            if (!queue.length) return alert('请输入目标 IP 段');
+    <div class="glass rounded-lg p-3 font-mono text-xs space-y-1">
+      <div class="text-slate-400">系统监视器</div>
+      <div>CONCURRENCY: <span id="mon-conc" class="text-blue-400">0</span>/<span id="mon-max">10</span></div>
+      <div>ABORT_CONTROLLER: <span id="mon-abort" class="text-green-400">READY</span></div>
+      <div>PROTOCOL: <span id="mon-proto" class="text-yellow-400">WORKER_PROXY</span></div>
+    </div>
 
-            isRunning = true;
-            abortCtrl = new AbortController();
-            btn.innerText = '停止当前任务';
-            btn.classList.add('stop-active');
-            
-            stats = { done: 0, alive: 0 };
-            document.getElementById('resList').innerHTML = '';
-            document.getElementById('statQueue').innerText = queue.length;
-            const limit = parseInt(document.getElementById('concurrency').value) || 6;
-            document.getElementById('maxReq').innerText = limit;
+    <footer class="text-center text-xs text-slate-600 pt-4">凯哥CF优选终端 Pro · Professional Cloudflare Optimization Solutions · 2026</footer>
+  </div>
 
-            while (isRunning && (queue.length > 0 || activeCount > 0)) {
-                if (activeCount < limit && queue.length > 0) {
-                    processTask(queue.shift());
-                }
-                await new Promise(r => setTimeout(r, 50));
-            }
-            if (isRunning) resetBtn(btn);
-        }
+<script>
+// ================= 配置区 =================
+const WORKER_BASE = "https://rapid-brook-0867.akay-mail.workers.dev/";
+const PRESETS = {
+  official: ["1.1.1.0/24", "1.0.0.0/24", "104.16.0.0/12", "172.64.0.0/13"],
+  hk: ["104.16.0.0/16", "104.17.0.0/16", "104.18.0.0/16", "104.19.0.0/16"],
+  us: ["104.20.0.0/16", "104.21.0.0/16", "104.22.0.0/16", "104.23.0.0/16"]
+};
 
-        function resetBtn(btn) {
-            btn.innerText = '开始测试任务';
-            btn.classList.remove('stop-active');
-            isRunning = false;
-        }
+// ================= 状态管理 =================
+let isRunning = false;
+let abortController = null;
+let activeTasks = 0;
+let pendingQueue = [];
+let completedCount = 0;
+let aliveCount = 0;
 
-        async function processTask(ip) {
-            activeCount++;
-            document.getElementById('activeReq').innerText = activeCount;
-            const port = document.getElementById('port').value;
-            const protocol = [443, 2053, 2083, 2087, 2096, 8443].includes(parseInt(port)) ? 'https' : 'http';
-            document.getElementById('curProto').innerText = protocol.toUpperCase();
-            const onlyLatency = document.getElementById('skipSpeed').checked;
-            
-            const row = document.getElementById('resList').insertRow(0);
-            row.innerHTML = `<td class="px-8 py-5 font-mono font-medium">${ip}</td><td class="px-8 py-5 text-blue-400 animate-pulse">检测中...</td><td class="px-8 py-5 text-center">-</td><td class="px-8 py-5 text-right">-</td>`;
+// ================= DOM 引用 =================
+const $ = id => document.getElementById(id);
+const ui = {
+  pending: $('ui-pending'), completed: $('ui-completed'), alive: $('ui-alive'),
+  input: $('input-target'), concurrency: $('input-concurrency'), port: $('input-port'),
+  pingMode: $('check-ping'), btn: $('btn-toggle'), table: $('table-body'),
+  monConc: $('mon-conc'), monMax: $('mon-max'), monAbort: $('mon-abort')
+};
+ui.monMax.textContent = ui.concurrency.value;
 
-            const start = Date.now();
-            try {
-                await fetch(`${protocol}://${ip}:${port}/cdn-cgi/trace`, { mode: 'no-cors', signal: abortCtrl.signal });
-                const lat = Date.now() - start;
-                stats.alive++;
-                row.cells[1].innerHTML = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold">ACTIVE</span>`;
-                row.cells[2].innerHTML = `<span class="font-bold text-blue-600">${lat}ms</span>`;
+// ================= 工具函数 =================
+function expandIp(input) {
+  if (!input.trim()) return [];
+  const list = [];
+  const parts = input.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  
+  for (const p of parts) {
+    if (p.includes('/')) {
+      const [base, mask] = p.split('/');
+      const ipInt = ipToInt(base);
+      const size = 1 << (32 - parseInt(mask));
+      for (let i = 0; i < size && i < 500; i++) list.push(intToIp(ipInt + i));
+    } else if (p.includes('-')) {
+      const [start, end] = p.split('-').map(ipToInt);
+      for (let i = start; i <= end && i < start + 500; i++) list.push(intToIp(i));
+    } else if (/^\d{1,3}(\.\d{1,3}){3}$/.test(p)) {
+      list.push(p);
+    }
+  }
+  return [...new Set(list)];
+}
+function ipToInt(ip) { return ip.split('.').reduce((a, o) => (a << 8) + +o, 0) >>> 0; }
+function intToIp(n) { return [(n>>>24)&255, (n>>>16)&255, (n>>>8)&255, n&255].join('.'); }
 
-                if (!onlyLatency) {
-                    const dlStart = Date.now();
-                    await fetch(`${protocol}://${ip}:${port}/__down?bytes=5000000`, { mode: 'no-cors', signal: abortCtrl.signal });
-                    const speed = (5 / ((Date.now() - dlStart) / 1000)).toFixed(2);
-                    row.cells[3].innerHTML = `<span class="font-bold text-black">${speed} MB/s</span>`;
-                }
-            } catch (e) {
-                row.cells[1].innerHTML = `<span class="text-red-300 uppercase text-[10px]">${e.name === 'AbortError' ? 'Stopped' : 'Blocked'}</span>`;
-            } finally {
-                stats.done++; activeCount--;
-                document.getElementById('statDone').innerText = stats.done;
-                document.getElementById('statAlive').innerText = stats.alive;
-                document.getElementById('statQueue').innerText = queue.length;
-                document.getElementById('activeReq').innerText = activeCount;
-            }
-        }
-    </script>
+function presetIp(type) { ui.input.value = PRESETS[type].join(','); }
+function clearInput() { ui.input.value = ''; }
+
+function addRow(ip, port) {
+  const tr = document.createElement('tr');
+  tr.id = `row-${ip}-${port}`;
+  tr.className = "hover:bg-slate-800/50 transition";
+  tr.innerHTML = `<td class="px-4 py-2 font-mono">${ip}:${port}</td>
+    <td class="px-4 py-2"><span class="status-dot dot-wait"></span>等待</td>
+    <td class="px-4 py-2">--</td><td class="px-4 py-2">--</td>`;
+  ui.table.appendChild(tr);
+}
+
+function updateRow(ip, port, status, latency, bw) {
+  const tr = document.getElementById(`row-${ip}-${port}`);
+  if (!tr) return;
+  const dot = tr.querySelector('.status-dot');
+  dot.className = `status-dot ${status === 'alive' ? 'dot-green' : 'dot-red'}`;
+  tr.children[1].innerHTML = `<span class="${dot.className}"></span>${status === 'alive' ? '存活' : '超时/拒绝'}`;
+  tr.children[2].textContent = latency ? `${latency.toFixed(0)} ms` : '--';
+  tr.children[3].textContent = bw ? `${bw.toFixed(1)} Mbps` : '--';
+}
+
+// ================= 核心测速逻辑 =================
+async function testNode(ip, port, isPing) {
+  const target = `${ip}:${port}`;
+  const url = `${WORKER_BASE}?target=${target}`;
+  const start = performance.now();
+  
+  try {
+    const res = await fetch(url, { method: isPing ? 'HEAD' : 'GET', cache: 'no-store' });
+    const latency = performance.now() - start;
+    
+    if (!res.ok) throw new Error('Non-200');
+    
+    let bw = 0;
+    if (!isPing && res.body) {
+      const reader = res.body.getReader();
+      let loaded = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        loaded += value.length;
+        if (loaded >= 5 * 1024 * 1024) break; // 5MB 截断
+      }
+      const duration = (performance.now() - start) / 1000;
+      bw = (loaded * 8) / (duration * 1024 * 1024);
+    }
+    
+    updateRow(ip, port, 'alive', latency, bw);
+    aliveCount++;
+    return { ip, port, latency, bw, status: 'alive' };
+  } catch (e) {
+    updateRow(ip, port, 'dead', performance.now() - start, 0);
+    return { ip, port, latency: performance.now() - start, bw: 0, status: 'dead' };
+  } finally {
+    completedCount++;
+    activeTasks--;
+    updateDashboard();
+    runQueue();
+  }
+}
+
+// ================= 队列与调度 =================
+function updateDashboard() {
+  ui.pending.textContent = pendingQueue.length + activeTasks;
+  ui.completed.textContent = completedCount;
+  ui.alive.textContent = aliveCount;
+  ui.monConc.textContent = activeTasks;
+}
+
+function runQueue() {
+  if (!isRunning || pendingQueue.length === 0) return;
+  const max = parseInt(ui.concurrency.value) || 10;
+  ui.monMax.textContent = max;
+  
+  while (pendingQueue.length > 0 && activeTasks < max) {
+    activeTasks++;
+    const { ip, port } = pendingQueue.shift();
+    addRow(ip, port);
+    testNode(ip, port, ui.pingMode.checked);
+  }
+  updateDashboard();
+}
+
+async function startTest() {
+  const targets = expandIp(ui.input.value);
+  const port = ui.port.value;
+  if (targets.length === 0) return alert('请输入有效的 IP 或网段');
+  
+  isRunning = true;
+  abortController = new AbortController();
+  ui.btn.textContent = '停止测试';
+  ui.btn.classList.replace('bg-blue-600', 'bg-red-600');
+  ui.btn.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
+  ui.monAbort.textContent = 'ACTIVE';
+  ui.monAbort.className = 'text-red-400';
+  
+  completedCount = 0; aliveCount = 0; activeTasks = 0;
+  ui.table.innerHTML = '';
+  pendingQueue = targets.map(ip => ({ ip, port }));
+  updateDashboard();
+  runQueue();
+}
+
+function stopTest() {
+  if (abortController) abortController.abort();
+  isRunning = false;
+  pendingQueue = [];
+  ui.btn.textContent = '开始测试任务';
+  ui.btn.classList.replace('bg-red-600', 'bg-blue-600');
+  ui.btn.classList.replace('hover:bg-red-500', 'hover:bg-blue-500');
+  ui.monAbort.textContent = 'READY';
+  ui.monAbort.className = 'text-green-400';
+  updateDashboard();
+}
+
+// ================= 事件绑定 =================
+ui.btn.addEventListener('click', () => isRunning ? stopTest() : startTest());
+ui.concurrency.addEventListener('input', () => { if(isRunning) runQueue(); });
+</script>
 </body>
 </html>
